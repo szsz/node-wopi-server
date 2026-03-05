@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { join } from 'path';
 import { checkAccess, getRawBody } from '../middleware/appMiddleware';
+import { verboseLogging } from '../middleware/loggingMiddleware';
 import { appRouter, wopiRouter } from '../router';
 import express = require('express');
 
@@ -12,6 +13,9 @@ export default class WopiServer {
     this.port = port ?? 3000;
     this.app = express();
 
+    // Add verbose logging middleware first (if enabled)
+    this.app.use(verboseLogging);
+    
     this.app.use(getRawBody);
     this.app.use('/wopi', checkAccess);
     this.app.use('/wopi', wopiRouter);

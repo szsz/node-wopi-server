@@ -159,9 +159,31 @@ All configuration is in `.env`:
 OFFICE_ONLINE_SERVER=http://localhost:9980
 WOPI_IMPLEMENTED=view,open,edit
 WOPI_SERVER=http://localhost:3000
+VERBOSE_LOGGING=true
 ```
 
 Change these values if you need different ports or domains.
+
+## Verbose Logging
+
+To help debug issues, you can enable verbose logging:
+
+```env
+VERBOSE_LOGGING=true
+```
+
+This will log:
+- All incoming HTTP requests (method, URL, headers, query params)
+- Request bodies (excluding binary file data)
+- All outgoing responses (status, headers, body)
+- Request/response duration
+
+**Note:** File data is automatically excluded from logs to keep them readable.
+
+To disable verbose logging:
+```env
+VERBOSE_LOGGING=false
+```
 
 ## What Was Fixed
 
