@@ -8,17 +8,17 @@ services:
     ports:
       - "9980:9980"
     environment:
-      # Domain that is allowed to access Collabora - allow both localhost and host.docker.internal
-      - domain=*
-     
-      # Extra parameters for Collabora - Explicitly allow host.docker.internal with port
-      - extra_params=--o:ssl.enable=false --o:ssl.termination=false --o:logging.level=debug
+      # Domain - allow all hosts for local development
+      - domain=.*
+      # Extra parameters for Collabora
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=false --o:storage.wopi.host[0]=.* --o:net.post_allow.host[0]=.* --o:logging.level=warning
+      # Admin console credentials
       - username=admin
       - password=admin
-      # Dictionaries (optional)
+      # Dictionaries
       - dictionaries=en_US
-      # Allow WOPI host - using host.docker.internal for Docker-to-host communication
-      - aliasgroup1=http://host.docker.internal:3000,http://localhost:300,http://127.0.0.1:300
+      # Allow WOPI hosts
+      - aliasgroup1=http://host.docker.internal:3000,http://localhost:3000,http://127.0.0.1:3000
     cap_add:
       - MKNOD
     tty: true
