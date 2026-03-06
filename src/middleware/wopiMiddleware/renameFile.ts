@@ -32,8 +32,9 @@ export async function renameFile(req:Request, res: Response, next: NextFunction)
 
   const lock = req.header('X-WOPI-Lock');
 
-  if (fileInfo?.lock[fileId] && lock !== fileInfo.lock[fileId]) {
-    res.setHeader('X-WOPI-Lock', fileInfo.lock[fileId] ?? '').sendStatus(409);
+  const lockInfo = await fileInfo.getLock(fileId);
+  if (lockInfo && lock !== lockInfo.lock) {
+    res.setHeader('X-WOPI-Lock', lockInfo.lock).sendStatus(409);
 
     return;
   }
@@ -67,8 +68,7 @@ export async function renameFile(req:Request, res: Response, next: NextFunction)
   }
 
   const id = (await stat(newFilePath)).ino.toString();
-  fileInfo.idMap[basename(filePath)] = id;
-  fileInfo.idMap[newRequestedNameWithExt] = id;
+  // idMap is now managed internally by the storage provider
 
   if (fileInfo?.info) {
     fileInfo.info.BaseFileName = newRequestedName;

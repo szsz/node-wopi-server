@@ -1,9 +1,8 @@
-import { existsSync } from 'fs';
-import { readdir, stat } from 'fs/promises';
-import { join } from 'path';
 import { CheckFileInfoResponse } from './CheckFileInfoResponse';
+import { StorageFactory } from '../storage';
+import { IStorageProvider } from '../storage';
+
 interface IFileInfo {
-  lock?: any;
   info?: CheckFileInfoResponse;
   supportedExtensions: [
     'doc',
@@ -27,70 +26,58 @@ interface IFileInfo {
     'ppsm',
     'pdf',
   ];
-    // getFilePath(): Promise<string>;
-  idMap: any;
 }
 
 export class FileInfo {
-  lock: {[key: string]: string};
   info?: CheckFileInfoResponse;
   supportedExtensions: string[];
-  idMap: any;
+  private storageProvider: IStorageProvider;
 
   constructor(options: IFileInfo) {
-    this.lock = options.lock ?? {};
     this.info = options.info;
     this.supportedExtensions = options.supportedExtensions;
-    this.idMap = options.idMap ?? {};
+    this.storageProvider = StorageFactory.getStorageProvider();
   }
 
   getFilePath = async (fileId: string): Promise<string> => {
-    try {
-      let id = '';
-
-      if (Object.hasOwnProperty.call(this.idMap, fileId)) {
-        id = this.idMap[fileId];
-      }
-
-      const folderPath = join(process.cwd(), 'files');
-      const files = await readdir(folderPath);
-
-      for (const name of files) {
-        const curFilePath = join(folderPath, name);
-
-        if (existsSync(curFilePath)) {
-          const stats = await stat(curFilePath);
-          const n = stats.ino.toString();
-
-          if (n === fileId || name === fileId) {
-            this.idMap[name] = n;
-            id = n;
-
-            break;
-          }
-        }
-      }
-
-      for (const name of files) {
-        const fp = join(folderPath, name);
-
-        const stats = await stat(fp);
-
-        if (stats.ino.toString() === id) {
-          return fp;
-        }
-      }
-
-      if (!id) {
-        id = join(folderPath, fileId);
-        this.idMap[fileId] = id;
-      }
-
-      return id;
-    } catch (err: any) {
-      console.error((err as Error).message || err);
-
-      return '';
-    }
+    return await this.storageProvider.getFilePath(fileId);
   };
+
+  // Storage operations
+  async getFile(fileId: string): Promise<Buffer> {
+    return await this.storageProvider.getFile(fileId);
+  }
+
+  async putFile(fileId: string, content: Buffer): Promise<{ version: string; etag: string }> {
+    return await this.storageProvider.putFile(fileId, content);
+  }
+
+  async getFileMetadata(fileId: string) {
+    return await this.storageProvider.getFileMetadata(fileId);
+  }
+
+  async deleteFile(fileId: string): Promise<void> {
+    return await this.storageProvider.deleteFile(fileId);
+  }
+
+  async fileExists(fileId: string): Promise<boolean> {
+    return await this.storageProvider.fileExists(fileId);
+  }
+
+  // Lock operations
+  async getLock(fileId: string) {
+    return await this.storageProvider.getLock(fileId);
+  }
+
+  async setLock(fileId: string, lockValue: string, oldLock?: string) {
+    return await this.storageProvider.setLock(fileId, lockValue, oldLock);
+  }
+
+  async refreshLock(fileId: string, lockValue: string) {
+    return await this.storageProvider.refreshLock(fileId, lockValue);
+  }
+
+  async unlock(fileId: string, lockValue: string) {
+    return await this.storageProvider.unlock(fileId, lockValue);
+  }
 }

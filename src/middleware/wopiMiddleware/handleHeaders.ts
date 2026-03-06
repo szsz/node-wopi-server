@@ -53,6 +53,7 @@ export async function handleHeaders(req: Request, res: Response, next: NextFunct
       unlock(req, res, next);
       break;
     default:
-      res.setHeader('X-WOPI-Lock', fileInfo.lock[fileId] ?? '').sendStatus(409);
+      const lockInfo = await fileInfo.getLock(fileId);
+      res.setHeader('X-WOPI-Lock', lockInfo?.lock ?? '').sendStatus(409);
   }
 }

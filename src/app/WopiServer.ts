@@ -10,7 +10,7 @@ export default class WopiServer {
   app: any;
 
   constructor(port?: number) {
-    this.port = port ?? 3000;
+    this.port = port ?? parseInt(process.env.PORT || '3000', 10);
     this.app = express();
 
     // Add verbose logging middleware first (if enabled)

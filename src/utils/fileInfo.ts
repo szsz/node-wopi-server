@@ -1,7 +1,6 @@
 import { FileInfo } from '../models';
 
 export const fileInfo = new FileInfo({
-  lock: undefined,
   info: undefined,
   supportedExtensions: [
     'doc',
@@ -25,7 +24,5 @@ export const fileInfo = new FileInfo({
     'ppsm',
     'pdf',
   ],
-  idMap: {},
 });
-fileInfo;
 

@@ -122,3 +122,5 @@ files
 !files/test.wopitest
 out/
 bin/
+build.zip
+.claude/

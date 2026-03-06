@@ -1,28 +1,40 @@
 import { NextFunction, Response } from 'express';
-import { stat } from 'fs/promises';
 import { ICustomRequest } from '../../models/ICustomRequest';
-import { fileInfo, updateFile } from '../../utils';
+import { fileInfo } from '../../utils';
 
 export async function putFile(req: ICustomRequest, res: Response, next: NextFunction): Promise<void> {
   const { file_id: fileId } = req.params;
-
-  const filePath = await fileInfo.getFilePath(fileId);
   const lockValue = req.header('X-WOPI-Lock');
-  const fileStats = await stat(filePath);
 
-  if ((!fileStats.size && !Object.hasOwnProperty.call(fileInfo.lock, fileId)) || (lockValue && fileInfo.lock[fileId] === lockValue)) {
-    if (lockValue) {
-      fileInfo.lock[fileId] = lockValue;
+  try {
+    // Check if file exists and get metadata
+    const exists = await fileInfo.fileExists(fileId);
+    const lockInfo = await fileInfo.getLock(fileId);
+
+    // Allow PUT if:
+    // 1. File doesn't exist or is empty AND there's no lock
+    // 2. Lock value matches the current lock
+    if ((!exists && !lockInfo) || (lockValue && lockInfo && lockInfo.lock === lockValue)) {
+      // If lock value is provided and there's no lock, set it
+      if (lockValue && !lockInfo) {
+        await fileInfo.setLock(fileId, lockValue);
+      }
+
+      // Save the file
+      const result = await fileInfo.putFile(fileId, req.rawBody ?? Buffer.from(''));
+
+      // Update file info version
+      if (fileInfo.info) {
+        fileInfo.info.Version = result.version;
+      }
+
+      res.setHeader('X-WOPI-ItemVersion', result.version).sendStatus(200);
+    } else {
+      // Lock conflict or unauthorized
+      res.setHeader('X-WOPI-Lock', lockInfo?.lock || '').sendStatus(409);
     }
-
-    const time = await updateFile(filePath, req.rawBody ?? Buffer.from(''), true);
-
-    res.setHeader('X-WOPI-ItemVersion', time).sendStatus(200);
-
-    return;
-  } else {
-    res.setHeader('X-WOPI-Lock', fileInfo.lock[fileId] || '').sendStatus(409);
-
-    return;
+  } catch (err) {
+    console.error('Error putting file:', err);
+    res.sendStatus(500);
   }
 }

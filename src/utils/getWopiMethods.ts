@@ -1,4 +1,6 @@
-import { IncomingMessage, request } from 'http';
+import * as http from 'http';
+import * as https from 'https';
+import { IncomingMessage } from 'http';
 import { Element, xml2js } from 'xml-js';
 
 export async function getWopiMethods(): Promise<any> {
@@ -80,7 +82,8 @@ export async function getWopiMethods(): Promise<any> {
         });
       };
 
-      request(options, callback).end();
+      const reqFn = hostUrl.protocol === 'https:' ? https.request : http.request;
+      reqFn(options, callback).on('error', reject).end();
     } catch (err: unknown) {
       reject(err);
     }

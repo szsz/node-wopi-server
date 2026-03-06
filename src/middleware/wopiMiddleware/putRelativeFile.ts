@@ -72,7 +72,8 @@ export async function putRelativeFile(req: ICustomRequest, res: Response, next: 
     const folderPath = join(process.cwd(), 'files');
     const filePath = join(folderPath, newFileName);
     const exists = existsSync(filePath);
-    const isLocked = Object.hasOwnProperty.call(fileInfo.lock, newFileName);
+    const lockInfo = await fileInfo.getLock(newFileName);
+    const isLocked = lockInfo !== null;
 
     if (!isValidFilename(newFileName)) {
       res.sendStatus(400);
@@ -81,7 +82,7 @@ export async function putRelativeFile(req: ICustomRequest, res: Response, next: 
     }
 
     if (isLocked) {
-      res.setHeader('X-WOPI-Lock', fileInfo.lock[newFileName] || '').sendStatus(409);
+      res.setHeader('X-WOPI-Lock', lockInfo?.lock || '').sendStatus(409);
 
       return;
     }

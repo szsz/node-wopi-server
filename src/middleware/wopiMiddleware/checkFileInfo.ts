@@ -26,7 +26,6 @@ export async function checkFileInfo(req: Request, res: Response, next: NextFunct
     throw new Error('file_id query parameter is required');
   }
 
-  let fileStats: Stats;
   const filePath = await fileInfo.getFilePath(fileId);
   const fileName = basename(filePath);
   const userName = req.query.access_token?.toString().split('|')[1] ?? userInfo().username;
@@ -36,8 +35,38 @@ export async function checkFileInfo(req: Request, res: Response, next: NextFunct
     actionUrls = (await getWopiMethods())[extname(filePath).replace('.', '')];
   }
 
+  let fileStats: Stats;
+  let fileSize: number;
+  let lastModified: Date;
+  let version: string;
+
   try {
-    fileStats = await stat(filePath);
+    const metadata = await fileInfo.getFileMetadata(fileId);
+    fileSize = metadata.size;
+    lastModified = metadata.lastModified;
+    version = metadata.version;
+    
+    // Create a Stats-like object for backward compatibility
+    fileStats = {
+      dev: 2114,
+      ino: 48064969,
+      mode: 33188,
+      nlink: 1,
+      uid: 85,
+      gid: 100,
+      rdev: 0,
+      size: fileSize,
+      blksize: 4096,
+      blocks: 8,
+      atimeMs: lastModified.getTime(),
+      mtimeMs: lastModified.getTime(),
+      ctimeMs: lastModified.getTime(),
+      birthtimeMs: lastModified.getTime(),
+      atime: lastModified,
+      mtime: lastModified,
+      ctime: lastModified,
+      birthtime: lastModified,
+    } as Stats;
   } catch (err) {
     fileStats = {
       dev: 2114,
@@ -59,6 +88,7 @@ export async function checkFileInfo(req: Request, res: Response, next: NextFunct
       ctime: new Date(),
       birthtime: new Date(),
     } as Stats;
+    version = fileStats.mtimeMs.toString();
   }
 
   const editUrls = actionUrls?.find((x: string[]) => x[0] === 'edit');
@@ -69,10 +99,18 @@ export async function checkFileInfo(req: Request, res: Response, next: NextFunct
   const hostViewUrl = viewUrl && `${viewUrl}${viewUrl?.endsWith('?') ? '' : '&'}${query}`;
   let isReadOnly = false;
 
-  try {
-    await access(filePath, constants.W_OK);
-  } catch (err) {
-    isReadOnly = true;
+  const { STORAGE_MODE } = process.env;
+  
+  if (STORAGE_MODE === 'azure') {
+    // In Azure mode, assume writable (we have full access via storage key)
+    isReadOnly = false;
+  } else {
+    // In local mode, check filesystem permissions
+    try {
+      await access(filePath, constants.W_OK);
+    } catch (err) {
+      isReadOnly = true;
+    }
   }
 
   const info = new CheckFileInfoResponse({
@@ -97,11 +135,11 @@ export async function checkFileInfo(req: Request, res: Response, next: NextFunct
     SupportsLocks: true,
     SupportsRename: true,
     SupportsUpdate: true,
-    UserCanRename: true,
-    UserCanWrite: true,
+    UserCanRename: !isReadOnly,
+    UserCanWrite: !isReadOnly,
     UserFriendlyName: userName,
     UserId: userName,
-    Version: fileStats.mtimeMs.toString(),
+    Version: version,
   });
 
   if (fileInfo?.info?.BaseFileName === fileName) {
